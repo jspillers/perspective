@@ -23,6 +23,7 @@
 #include <sstream>
 #include <perspective/sym_table.h>
 #include <codecvt>
+#include <tsl/ordered_map.h>
 
 typedef std::codecvt_utf8<wchar_t> utf8convert_type;
 typedef std::codecvt_utf8_utf16<wchar_t> utf16convert_type;
@@ -58,7 +59,7 @@ namespace binding {
      *
      */
     template <typename T>
-    std::map<std::string, std::string> _make_aggregate_map(T in_aggs);
+    tsl::ordered_map<std::string, std::string> _make_aggregate_map(T in_aggs);
 
     /**
      * @brief Calculate specified aggregates and use default aggregates for
@@ -73,7 +74,7 @@ namespace binding {
      * @param columns
      */
     std::vector<t_aggspec> _get_aggspecs(
-        const std::map<std::string, std::string>& aggregate_map, const t_schema& schema,
+        const tsl::ordered_map<std::string, std::string>& aggregate_map, const t_schema& schema,
         const std::vector<std::string>& row_pivots,
         const std::vector<std::string>& column_pivots, bool column_only,
         const std::vector<std::string>& columns,

@@ -68,9 +68,9 @@ namespace binding {
     }
 
     template <>
-    std::map<std::string, std::string>
+    tsl::ordered_map<std::string, std::string>
     _make_aggregate_map(val in_aggs) {
-        std::map<std::string, std::string> aggregate_map;
+        tsl::ordered_map<std::string, std::string> aggregate_map;
 
         val agg_entries = val::global("Object").call<val>("entries", in_aggs);
         std::int32_t agg_entries_length = agg_entries["length"].as<std::int32_t>();
@@ -98,7 +98,7 @@ namespace binding {
      * @param columns
      */
     std::vector<t_aggspec>
-    _get_aggspecs(const std::map<std::string, std::string>& aggregate_map,
+    _get_aggspecs(const tsl::ordered_map<std::string, std::string>& aggregate_map,
         const t_schema& schema, const std::vector<std::string>& row_pivots,
         const std::vector<std::string>& column_pivots, bool column_only,
         const std::vector<std::string>& columns,
@@ -127,21 +127,23 @@ namespace binding {
 
         // Construct aggregates from config object
         for (auto const& aggregate : aggregate_map) {
-            if (std::find(columns.begin(), columns.end(), aggregate.first) == columns.end()) {
+            const std::string& agg_column = aggregate.first;
+
+            if (std::find(columns.begin(), columns.end(), agg_column) == columns.end()) {
                 continue;
             }
 
-            const std::string& agg_column = aggregate.first;
-            const std::string& agg_op = aggregate.second;
-            std::vector<t_dep> dependencies;
+            std::cout << "READ " << agg_column << std::endl;
 
             t_aggtype aggtype;
+
             if (column_only) {
                 aggtype = str_to_aggtype("any");
             } else {
-                aggtype = str_to_aggtype(agg_op);
+                aggtype = str_to_aggtype(aggregate.second);
             }
 
+            std::vector<t_dep> dependencies;
             dependencies.push_back(t_dep(agg_column, DEPTYPE_COLUMN));
 
             if (aggtype == AGGTYPE_FIRST || aggtype == AGGTYPE_LAST) {
@@ -157,7 +159,7 @@ namespace binding {
 
         // construct aggspecs for hidden sorts
         for (auto const& sortby : sortbys) {
-            std::string column = sortby.first;
+            const std::string& column = sortby.first;
 
             bool is_hidden_column
                 = std::find(columns.begin(), columns.end(), column) == columns.end();
@@ -206,7 +208,7 @@ namespace binding {
     std::vector<t_sortspec>
     _get_sort(const std::vector<std::pair<std::string, std::string>>& sortbys,
         const std::vector<std::string>& columns, bool is_column_sort) {
-        std::vector<t_sortspec> svec{};
+        std::vector<t_sortspec> svec;
 
         auto _is_valid_sort = [is_column_sort](std::string op) {
             /**
