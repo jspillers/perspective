@@ -70,6 +70,8 @@ namespace binding {
     template <>
     tsl::ordered_map<std::string, std::string>
     _make_aggregate_map(val in_aggs) {
+        // TODO: could also be a pair of vectors, the first being keys and the second being
+        // values
         tsl::ordered_map<std::string, std::string> aggregate_map;
 
         val agg_entries = val::global("Object").call<val>("entries", in_aggs);
@@ -132,8 +134,6 @@ namespace binding {
             if (std::find(columns.begin(), columns.end(), agg_column) == columns.end()) {
                 continue;
             }
-
-            std::cout << "READ " << agg_column << std::endl;
 
             t_aggtype aggtype;
 

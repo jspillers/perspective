@@ -199,12 +199,6 @@ std::vector<U> vecFromArray(T& arr){
  *
  * Data Loading
  */
-template <>
-std::vector<std::string>
-_agg_to_vector(py::object in_agg) {
-    return std::vector<std::string>();
-}
-
 
 /**
  * Converts a scalar value to its Python representation.
