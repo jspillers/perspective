@@ -52,35 +52,55 @@ namespace binding {
     std::vector<std::string> _get_aggregate_names(const std::vector<t_aggspec>& aggs);
 
     /**
-     * @brief Calculate aggregates specified in `j_aggs` and use default aggregates for
+     * @brief Given an object in the binding language containing aggregate specifications
+     * (usually a map or map-like object), transform it into a map of string keys and string
+     * values for use in the engine.
+     *
+     */
+    template <typename T>
+    std::map<std::string, std::string> _make_aggregate_map(T in_aggs);
+
+    /**
+     * @brief Calculate specified aggregates and use default aggregates for
      * columns marked in `columns`.
      *
-     * @tparam
+     * @tparam T
+     * @param aggregate_map
      * @param schema
      * @param row_pivots
      * @param column_pivots
      * @param sortbys
      * @param columns
-     * @param j_aggs
      */
-    template <typename T>
-    std::vector<t_aggspec> _get_aggspecs(const t_schema& schema,
+    std::vector<t_aggspec> _get_aggspecs(
+        const std::map<std::string, std::string>& aggregate_map, const t_schema& schema,
         const std::vector<std::string>& row_pivots,
         const std::vector<std::string>& column_pivots, bool column_only,
-        const std::vector<std::string>& columns, const std::vector<T>& sortbys, T j_aggs);
+        const std::vector<std::string>& columns,
+        const std::vector<std::pair<std::string, std::string>>& sortbys);
+
+    /**
+     * @brief Given an object in the binding language containing sort specifications, transform
+     * it into a vector of string pairs for use in the engine.
+     *
+     * @tparam
+     * @param sortby
+     * @return std::vector<std::pair<std::string, std::string>>
+     */
+    template <typename T>
+    std::vector<std::pair<std::string, std::string>> _make_sortby(T in_sortby);
 
     /**
      * @brief Retrieve and validate how we sort the dataset in the view.
      *
-     * @tparam T
      * @param columns
      * @param is_column_sort
      * @param sortbys
      * @return std::vector<t_sortspec>
      */
-    template <typename T>
-    std::vector<t_sortspec> _get_sort(const std::vector<std::string>& columns,
-        bool is_column_sort, const std::vector<T>& sortbys);
+    std::vector<t_sortspec> _get_sort(
+        const std::vector<std::pair<std::string, std::string>>& sortbys,
+        const std::vector<std::string>& columns, bool is_column_sort);
 
     /**
      * @brief From the binding language, retrieve what we need to filter the dataset by.

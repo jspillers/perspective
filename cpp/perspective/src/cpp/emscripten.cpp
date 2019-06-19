@@ -47,6 +47,7 @@ namespace binding {
      * Data Loading
      */
 
+    // Aggregate parsing
     t_index
     _get_aggregate_index(const std::vector<std::string>& agg_names, std::string name) {
         for (std::size_t idx = 0, max = agg_names.size(); idx != max; ++idx) {
@@ -67,27 +68,55 @@ namespace binding {
     }
 
     template <>
+    std::map<std::string, std::string>
+    _make_aggregate_map(val in_aggs) {
+        std::map<std::string, std::string> aggregate_map;
+
+        val agg_entries = val::global("Object").call<val>("entries", in_aggs);
+        std::int32_t agg_entries_length = agg_entries["length"].as<std::int32_t>();
+
+        for (auto idx = 0; idx != agg_entries_length; ++idx) {
+            val entry = agg_entries[idx];
+            const std::string agg = entry[0].as<std::string>();
+            const std::string agg_op = entry[1].as<std::string>();
+            aggregate_map[agg] = agg_op;
+        }
+
+        return aggregate_map;
+    }
+
+    /**
+     * @brief Calculate specified aggregates and use default aggregates for
+     * columns marked in `columns`.
+     *
+     * @tparam T
+     * @param aggregate_map
+     * @param schema
+     * @param row_pivots
+     * @param column_pivots
+     * @param sortbys
+     * @param columns
+     */
     std::vector<t_aggspec>
-    _get_aggspecs(const t_schema& schema, const std::vector<std::string>& row_pivots,
+    _get_aggspecs(const std::map<std::string, std::string>& aggregate_map,
+        const t_schema& schema, const std::vector<std::string>& row_pivots,
         const std::vector<std::string>& column_pivots, bool column_only,
-        const std::vector<std::string>& columns, const std::vector<val>& sortbys, val j_aggs) {
+        const std::vector<std::string>& columns,
+        const std::vector<std::pair<std::string, std::string>>& sortbys) {
         std::vector<t_aggspec> aggspecs;
-        val agg_columns = val::global("Object").call<val>("keys", j_aggs);
-        std::vector<std::string> aggs = vecFromArray<val, std::string>(agg_columns);
 
         /**
          * Provide aggregates for columns that are shown but NOT specified in
-         * the `j_aggs` object.
+         * `aggregate_map`.
          */
         for (const std::string& column : columns) {
-            if (std::find(aggs.begin(), aggs.end(), column) != aggs.end()) {
+            if (aggregate_map.count(column) == 1)
                 continue;
-            }
 
             t_dtype dtype = schema.get_dtype(column);
             std::vector<t_dep> dependencies{t_dep(column, DEPTYPE_COLUMN)};
-            t_aggtype agg_op
-                = t_aggtype::AGGTYPE_ANY; // use aggtype here since we are not parsing aggs
+            t_aggtype agg_op = t_aggtype::AGGTYPE_ANY; // use aggtype here since we are not
+                                                       // parsing string aggregate
 
             if (!column_only) {
                 agg_op = _get_default_aggregate(dtype);
@@ -97,21 +126,23 @@ namespace binding {
         }
 
         // Construct aggregates from config object
-        for (const std::string& agg_column : aggs) {
-            if (std::find(columns.begin(), columns.end(), agg_column) == columns.end()) {
+        for (auto const& aggregate : aggregate_map) {
+            if (std::find(columns.begin(), columns.end(), aggregate.first) == columns.end()) {
                 continue;
             }
 
-            std::string agg_op = j_aggs[agg_column].as<std::string>();
+            const std::string& agg_column = aggregate.first;
+            const std::string& agg_op = aggregate.second;
             std::vector<t_dep> dependencies;
 
+            t_aggtype aggtype;
             if (column_only) {
-                agg_op = "any";
+                aggtype = str_to_aggtype("any");
+            } else {
+                aggtype = str_to_aggtype(agg_op);
             }
 
             dependencies.push_back(t_dep(agg_column, DEPTYPE_COLUMN));
-
-            t_aggtype aggtype = str_to_aggtype(agg_op);
 
             if (aggtype == AGGTYPE_FIRST || aggtype == AGGTYPE_LAST) {
                 if (dependencies.size() == 1) {
@@ -125,12 +156,12 @@ namespace binding {
         }
 
         // construct aggspecs for hidden sorts
-        for (auto sortby : sortbys) {
-            std::string column = sortby[0].as<std::string>();
+        for (auto const& sortby : sortbys) {
+            std::string column = sortby.first;
 
             bool is_hidden_column
                 = std::find(columns.begin(), columns.end(), column) == columns.end();
-            bool not_aggregated = std::find(aggs.begin(), aggs.end(), column) == aggs.end();
+            bool not_aggregated = aggregate_map.count(column) == 0;
 
             if (is_hidden_column) {
                 bool is_pivot = (std::find(row_pivots.begin(), row_pivots.end(), column)
@@ -155,44 +186,52 @@ namespace binding {
         return aggspecs;
     }
 
+    // Sort specification parsing
     template <>
+    std::vector<std::pair<std::string, std::string>>
+    _make_sortby(val in_sortby) {
+        std::vector<std::pair<std::string, std::string>> sortby;
+
+        std::int32_t in_sortby_length = in_sortby["length"].as<std::int32_t>();
+        for (auto idx = 0; idx < in_sortby_length; ++idx) {
+            val sort_item = in_sortby[idx];
+            const std::string column = sort_item[0].as<std::string>();
+            const std::string sort_op_str = sort_item[1].as<std::string>();
+            sortby.push_back(std::make_pair(column, sort_op_str));
+        }
+
+        return sortby;
+    }
+
     std::vector<t_sortspec>
-    _get_sort(const std::vector<std::string>& columns, bool is_column_sort,
-        const std::vector<val>& sortbys) {
+    _get_sort(const std::vector<std::pair<std::string, std::string>>& sortbys,
+        const std::vector<std::string>& columns, bool is_column_sort) {
         std::vector<t_sortspec> svec{};
 
-        auto _is_valid_sort = [is_column_sort](val sort_item) {
+        auto _is_valid_sort = [is_column_sort](std::string op) {
             /**
              * If column sort, make sure string matches. Otherwise make
              * sure string is *not* a column sort.
              */
-            std::string op = sort_item[1].as<std::string>();
             bool is_col_sortop = op.find("col") != std::string::npos;
             return (is_column_sort && is_col_sortop) || (!is_col_sortop && !is_column_sort);
         };
 
-        for (auto idx = 0; idx < sortbys.size(); ++idx) {
-            val sort_item = sortbys[idx];
-            t_index agg_index;
-            std::string column;
-            t_sorttype sorttype;
-
-            std::string sort_op_str;
-            if (!_is_valid_sort(sort_item)) {
+        for (auto const& sortby : sortbys) {
+            if (!_is_valid_sort(sortby.second)) {
                 continue;
             }
 
-            column = sort_item[0].as<std::string>();
-            sort_op_str = sort_item[1].as<std::string>();
-            sorttype = str_to_sorttype(sort_op_str);
-
-            agg_index = _get_aggregate_index(columns, column);
+            t_index agg_index = _get_aggregate_index(columns, sortby.first);
+            t_sorttype sorttype = str_to_sorttype(sortby.second);
 
             svec.push_back(t_sortspec(agg_index, sorttype));
         }
+
         return svec;
     }
 
+    // Filter parsing
     template <>
     std::vector<t_fterm>
     _get_fterms(const t_schema& schema, val j_date_parser, val j_filters) {
@@ -1646,13 +1685,14 @@ namespace binding {
         val j_filter = config["filter"];
         val j_sort = config["sort"];
 
+        // FIXME: are we double allocating here
         std::vector<std::string> row_pivots;
         std::vector<std::string> column_pivots;
         std::vector<t_aggspec> aggregates;
         std::vector<std::string> aggregate_names;
         std::vector<std::string> columns;
         std::vector<t_fterm> filters;
-        std::vector<val> sortbys;
+        std::vector<std::pair<std::string, std::string>> sortbys;
         std::vector<t_sortspec> sorts;
         std::vector<t_sortspec> col_sorts;
 
@@ -1674,12 +1714,13 @@ namespace binding {
         }
 
         if (hasValue(j_sort)) {
-            sortbys = vecFromArray<val, val>(j_sort);
+            sortbys = _make_sortby(j_sort);
         }
 
         columns = vecFromArray<val, std::string>(j_columns);
+        auto aggregate_map = _make_aggregate_map(j_aggregates);
         aggregates = _get_aggspecs(
-            schema, row_pivots, column_pivots, column_only, columns, sortbys, j_aggregates);
+            aggregate_map, schema, row_pivots, column_pivots, column_only, columns, sortbys);
         aggregate_names = _get_aggregate_names(aggregates);
 
         if (hasValue(j_filter)) {
@@ -1690,8 +1731,8 @@ namespace binding {
         }
 
         if (sortbys.size() > 0) {
-            sorts = _get_sort(aggregate_names, false, sortbys);
-            col_sorts = _get_sort(aggregate_names, true, sortbys);
+            sorts = _get_sort(sortbys, aggregate_names, false);
+            col_sorts = _get_sort(sortbys, aggregate_names, true);
         }
 
         auto view_config = t_config(row_pivots, column_pivots, aggregates, sorts, col_sorts,

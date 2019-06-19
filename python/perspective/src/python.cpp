@@ -199,51 +199,13 @@ std::vector<U> vecFromArray(T& arr){
  *
  * Data Loading
  */
-/* template <>
-std::vector<t_sortspec> _get_sort(
-        const std::vector<std::string>& columns, bool is_column_sort, py::object j_sortby) {
-    // TODO
-    std::vector<t_sortspec> svec{};
-    return svec;
-} */
-
-/**
- *
- *
- * Params
- * ------
- *
- *
- * Returns
- * -------
- *
- */
-/* template <> 
-std::vector<t_fterm>
-_get_fterms(const t_schema schema, py::object j_date_parser, py::object j_filters) {
-    // TODO
-    std::vector<t_fterm> fvec{};
-    return fvec;
-} */
-
-/**
- *
- *
- * Params
- * ------
- *
- *
- * Returns
- * -------
- *
- */
-/* std::vector<t_aggspec>
-_get_aggspecs(py::object j_aggs) {
-    // TODO
-    std::vector<t_aggspec> aggspecs;
-    return aggspecs;
+template <>
+std::vector<std::string>
+_agg_to_vector(py::object in_agg) {
+    return std::vector<std::string>();
 }
- */
+
+
 /**
  * Converts a scalar value to its Python representation.
  *
@@ -256,7 +218,8 @@ _get_aggspecs(py::object j_aggs) {
  * py::object
  */
 template <>
-py::object scalar_to(const t_tscalar& scalar) {
+py::object 
+scalar_to(const t_tscalar& scalar) {
     if (!scalar.is_valid()) {
         return py::object(); //None
     }
