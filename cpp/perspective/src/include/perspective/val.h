@@ -32,7 +32,7 @@ class t_val {
 public:
     /**
      * A `t_val` can be constructed from another `t_val` or from instances of the underlying
-     * `_val` type.
+     * `m_val` type.
      */
     t_val(t_val&& v);
 
@@ -104,8 +104,8 @@ public:
     template <typename ReturnType, typename... Args>
     ReturnType call(t_val handle, const char* methodName, Args&&... args) const;
 
-    template <typename ReturnType, typename... Policies>
-    ReturnType as(Policies... policies) const;
+    template <typename ReturnType>
+    ReturnType as() const;
 
     bool hasOwnProperty(const char* key) const;
 
@@ -125,7 +125,7 @@ public:
 
     /**
      * A `t_val` can be compared to another `t_val` instance or an instance of its underlying
-     * `_val` type.
+     * `m_val` type.
      */
     bool equals(const T& v) const;
 
@@ -185,7 +185,7 @@ public:
     bool delete_(const F& property) const;
 
 private:
-    T _val;
+    T m_val;
 };
 } // namespace perspective
 

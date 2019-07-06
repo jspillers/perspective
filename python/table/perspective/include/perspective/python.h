@@ -56,6 +56,16 @@ BOOST_PYTHON_MODULE(libbinding)
     np::initialize(true);
     _import_array();
 
+    py::class_<perspective::Table, boost::noncopyable>("Table", py::init<
+        std::shared_ptr<perspective::t_pool>, 
+        std::vector<std::string>,
+        std::vector<perspective::t_dtype>, 
+        std::uint32_t, 
+        std::uint32_t,
+        std::string, 
+        perspective::t_op, 
+        bool
+        >());
     /******************************************************************************
      *
      * t_column
@@ -451,8 +461,7 @@ BOOST_PYTHON_MODULE(libbinding)
      */
     // py::def("sort", sort<py::object>);
     py::def("make_table", make_table<py::object>);
-    py::def("make_gnode", make_gnode);
-    py::def("clone_gnode_table", clone_gnode_table<py::object>);
+    py::def("replace_table", replace_table<py::object>);
     // py::def("make_context_zero", make_context_zero);
     // py::def("make_context_one", make_context_one);
     // py::def("make_context_two", make_context_two);

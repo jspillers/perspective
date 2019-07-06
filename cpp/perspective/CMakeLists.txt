@@ -89,7 +89,7 @@ if (NOT DEFINED PSP_CPP_BUILD_TESTS)
 endif()
 
 if (NOT DEFINED PSP_CPP_BUILD_STRICT)
-	set(PSP_CPP_BUILD_STRICT OFF)
+	set(PSP_CPP_BUILD_STRICT ON)
 endif()
 
 if(PSP_WASM_BUILD)
@@ -345,6 +345,7 @@ set (SOURCE_FILES
 	src/cpp/tree_context_common.cpp
 	src/cpp/utils.cpp
 	src/cpp/update_task.cpp
+	src/cpp/val.cpp
 	src/cpp/view.cpp
 	src/cpp/vocab.cpp
 	)
