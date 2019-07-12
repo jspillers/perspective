@@ -102,9 +102,14 @@ t_ftrav::fill_sort_elem(std::shared_ptr<const t_gstate> state, const t_config& c
     out_elem.m_pkey = pkey;
     t_index sortby_size = m_sortby.size();
     out_elem.m_row.reserve(sortby_size);
-    for (t_index idx = 0; idx < sortby_size; ++idx) {
-        t_index sortby_idx = m_sortby[idx].m_agg_index;
-        const std::string& colname = config.col_at(sortby_idx);
+    for (const t_sortspec& sort : m_sortby) {
+        // FIXME: cleanup
+        std::string colname;
+        if (sort.m_colname == "") {
+            colname = config.col_at(sort.m_agg_index);
+        } else {
+            colname = sort.m_colname;
+        }
         const std::string sortby_colname = config.get_sort_by(colname);
         out_elem.m_row.push_back(
             m_symtable.get_interned_tscalar(state->get(pkey, sortby_colname)));
@@ -117,9 +122,14 @@ t_ftrav::fill_sort_elem(std::shared_ptr<const t_gstate> state, const t_config& c
     out_elem.m_pkey = mknone();
     t_index sortby_size = m_sortby.size();
     out_elem.m_row.reserve(sortby_size);
-    for (t_index idx = 0; idx < sortby_size; ++idx) {
-        t_index sortby_idx = m_sortby[idx].m_agg_index;
-        const std::string& colname = config.col_at(sortby_idx);
+    for (const t_sortspec& sort : m_sortby) {
+        // FIXME: cleanup
+        std::string colname;
+        if (sort.m_colname == "") {
+            colname = config.col_at(sort.m_agg_index);
+        } else {
+            colname = sort.m_colname;
+        }
         const std::string sortby_colname = config.get_sort_by(colname);
         out_elem.m_row.push_back(
             get_interned_tscalar(row.at(config.get_colidx(sortby_colname))));
